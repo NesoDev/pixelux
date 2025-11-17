@@ -1,0 +1,29 @@
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+  background: none;
+}
+
+.header-title {
+  color: #fff;
+  font-size: clamp(2.5rem, 8vw, 6rem);
+  font-weight: 900;
+  margin: 0;
+  text-align: center;
+}
+
+.header-subtitle {
+  color: #ccc;
+  font-size: clamp(0.8rem, 2.5vw, 2rem);
+  font-weight: 400;
+  margin: 0.5rem 0 0 0;
+  text-align: center;
+}
+
+body, #root {
+  background: #000;
+}
