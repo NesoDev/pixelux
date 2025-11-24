@@ -1,0 +1,48 @@
+.menu-box {
+  margin: 2rem auto 0 auto;
+  padding: 1.5rem 1.2rem;
+  background: #181818;
+  border-radius: 1.5rem;
+  box-shadow: 0 2px 16px 0 #0006;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 350px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.menu-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.2rem;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.menu-label {
+  color: #fff;
+  font-size: 1rem;
+  margin-right: 0.7rem;
+}
+
+.menu-select {
+  background: #232323;
+  color: #fff;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.3rem 1rem;
+  font-size: 1rem;
+}
+
+.menu-range {
+  width: 120px;
+  margin: 0 0.7rem;
+}
+
+.menu-scale-value {
+  color: #fff;
+  font-size: 1rem;
+  min-width: 2.5rem;
+  text-align: right;
+}

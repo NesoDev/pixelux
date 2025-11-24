@@ -1,0 +1,56 @@
+FROM nvidia/cuda:13.0.1-cudnn-devel-ubuntu24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Instalar dependencias
+RUN apt-get update && apt-get install -y \
+  cmake libopencv-dev \
+  build-essential \
+  openmpi-bin openmpi-common libopenmpi-dev openmpi-doc \
+  openssh-client openssh-server \
+  nfs-common net-tools iputils-ping nano vim htop && \
+  rm -rf /var/lib/apt/lists/*
+
+# Configurar environment variables de CUDA para todos los usuarios
+ENV PATH=/usr/local/cuda/bin:${PATH}
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
+ENV CUDA_HOME=/usr/local/cuda
+
+# Configuración SSH (root)
+RUN mkdir /var/run/sshd
+RUN ssh-keygen -A
+
+# Crear usuario mpiuser con sudo
+RUN useradd -ms /bin/bash mpiuser && echo "mpiuser:mpi" | chpasswd && adduser mpiuser sudo
+
+# Crear claves para mpiuser
+USER mpiuser
+WORKDIR /home/mpiuser
+
+# Añadir CUDA al PATH en el .bashrc de mpiuser
+RUN echo 'export PATH=/usr/local/cuda/bin:${PATH}' >> ~/.bashrc && \
+  echo 'export LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}' >> ~/.bashrc && \
+  echo 'export CUDA_HOME=/usr/local/cuda' >> ~/.bashrc && \
+  echo '# SSH automático' >> ~/.bashrc && \
+  echo 'mkdir -p ~/.ssh' >> ~/.bashrc && \
+  echo 'echo "Host worker1 worker2 master 172.28.1.2 172.28.1.3 172.28.1.4" >> ~/.ssh/config' >> ~/.bashrc && \
+  echo 'echo "    StrictHostKeyChecking no" >> ~/.ssh/config' >> ~/.bashrc && \
+  echo 'echo "    UserKnownHostsFile /dev/null" >> ~/.ssh/config' >> ~/.bashrc && \
+  echo 'echo "    LogLevel ERROR" >> ~/.ssh/config' >> ~/.bashrc
+
+# Configurar SSH para mpiuser (sin password)
+RUN mkdir -p /home/mpiuser/.ssh && \
+  ssh-keygen -t rsa -f /home/mpiuser/.ssh/id_rsa -q -N "" && \
+  cat /home/mpiuser/.ssh/id_rsa.pub >> /home/mpiuser/.ssh/authorized_keys && \
+  chmod 700 /home/mpiuser/.ssh && \
+  chmod 600 /home/mpiuser/.ssh/authorized_keys
+
+# Crear hostfile con IPs (se ejecuta durante el build)
+RUN echo "172.28.1.2 slots=1 172.28.1.3 slots=1 172.28.1.4 slots=1" > /home/mpiuser/hostfile
+
+# Volver a root para arrancar sshd
+USER root
+EXPOSE 22
+
+# Comando que se ejecuta al iniciar el contenedor
+CMD ["/usr/sbin/sshd","-D"]

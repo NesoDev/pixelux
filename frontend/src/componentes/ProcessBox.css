@@ -1,0 +1,60 @@
+.process-box {
+  margin: 2rem auto 0 auto;
+  padding: 1.5rem 1.2rem;
+  background: #181818;
+  border-radius: 1.5rem;
+  box-shadow: 0 2px 16px 0 #0006;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 350px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.process-btn {
+  background: #232323;
+  color: #fff;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.7rem 1.5rem;
+  font-size: 1.1rem;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  transition: background 0.2s;
+}
+.process-btn:hover {
+  background: #333;
+}
+
+.loading-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 18px);
+  grid-template-rows: repeat(3, 18px);
+  gap: 6px;
+  margin: 0.5rem 0;
+}
+
+.loading-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: #444;
+  opacity: 0.5;
+  animation: loading-dot-fade 1s infinite alternate;
+}
+
+.loading-dot-0 { animation-delay: 0s; }
+.loading-dot-1 { animation-delay: 0.1s; }
+.loading-dot-2 { animation-delay: 0.2s; }
+.loading-dot-3 { animation-delay: 0.3s; }
+.loading-dot-4 { animation-delay: 0.4s; }
+.loading-dot-5 { animation-delay: 0.5s; }
+.loading-dot-6 { animation-delay: 0.6s; }
+.loading-dot-7 { animation-delay: 0.7s; }
+.loading-dot-8 { animation-delay: 0.8s; }
+
+@keyframes loading-dot-fade {
+  0% { opacity: 0.5; background: #444; }
+  100% { opacity: 1; background: #fff; }
+}

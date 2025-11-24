@@ -1,0 +1,101 @@
+services:
+  master:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: master
+    hostname: master
+    ports:
+      - "2222:22"
+    volumes:
+      - ./shared:/home/mpiuser/shared
+    networks:
+      mpi-net:
+        ipv4_address: 172.28.1.2
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  worker1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: worker1
+    hostname: worker1
+    ports:
+      - "2223:22"
+    volumes:
+      - ./shared:/home/mpiuser/shared
+    networks:
+      mpi-net:
+        ipv4_address: 172.28.1.3
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  worker2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: worker2
+    hostname: worker2
+    ports:
+      - "2224:22"
+    volumes:
+      - ./shared:/home/mpiuser/shared
+    networks:
+      mpi-net:
+        ipv4_address: 172.28.1.4
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: pixelux-api
+    hostname: api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./shared:/home/mpiuser/shared
+    networks:
+      mpi-net:
+        ipv4_address: 172.28.1.5
+    environment:
+      - PIXELART_BINARY=/home/mpiuser/shared/pixelart/pixelart_mpi
+      - TEMP_DIR=/tmp/pixelux
+      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:4173
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DEBUG=false
+    depends_on:
+      - master
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  mpi-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+          ip_range: 172.28.1.0/24

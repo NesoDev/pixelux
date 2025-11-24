@@ -1,0 +1,15 @@
+{
+  "C_Cpp.errorSquiggles": "disabled",
+  "files.associations": {
+    "list": "cpp",
+    "vector": "cpp",
+    "xhash": "cpp",
+    "xlocinfo": "cpp",
+    "xstring": "cpp",
+    "xutility": "cpp",
+    "array": "cpp",
+    "string_view": "cpp",
+    "span": "cpp",
+    "memory": "cpp"
+  }
+}
