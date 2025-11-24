@@ -1,233 +1,318 @@
-# Pixelux - Pixel Art Converter
+# Pixelux
 
-Sistema completo de conversión de imágenes a pixel art usando CUDA/MPI para procesamiento acelerado por GPU.
+High-performance pixel art conversion system leveraging CUDA-accelerated GPU processing and distributed MPI computing.
 
-**🐳 Completamente Dockerizado** - Solo requiere Docker + NVIDIA drivers instalados
+## Overview
 
-## 🚀 Inicio Rápido
+Pixelux is a production-grade image processing pipeline that transforms standard images into pixel art using GPU-accelerated algorithms. The system employs a distributed architecture with CUDA kernels for parallel processing, MPI for cluster coordination, and a modern web interface for user interaction.
+
+**Key Features:**
+- GPU-accelerated image processing with CUDA
+- Distributed computing via MPI cluster
+- Multiple dithering algorithms (Floyd-Steinberg, Ordered)
+- Configurable color quantization
+- RESTful API with FastAPI
+- Containerized deployment with Docker
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                       Client Layer                          │
+│                 React + Vite (Port 5173)                    |
+└────────────────────────────┬────────────────────────────────┘
+                             │ HTTP/REST
+┌────────────────────────────▼────────────────────────────────┐
+│                       API Gateway                           │
+│               FastAPI Server (Port 8000)                    │
+│               - Request validati(Pydantic)                  │
+│               - CORS handling                               │
+│               - Base64 encoding/decoding                    │
+└────────────────────────────┬────────────────────────────────┘
+                             │ Subprocess
+┌────────────────────────────▼────────────────────────────────┐
+│                    Processing Backend                       │
+│                   C++/CUDA/MPI Cluster                      │
+│        ┌──────────┐  ┌──────────┐  ┌──────────┐             │
+│        │  Master  │  │ Worker 1 │  │ Worker 2 │             │
+│        │   Node   │  │   Node   │  │   Node   │             │
+│        └──────────┘  └──────────┘  └──────────┘             │
+│             │              │              │                 │
+│             └──────────────┴──────────────┘                 │
+│                       MPI Network                           │
+│                  GPU Processing (CUDA)                      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Prerequisites
+
+The following must be installed on the host system:
+
+1. **Docker Engine** (20.10+)
+   - [Installation Guide](https://docs.docker.com/engine/install/)
+   
+2. **NVIDIA GPU Drivers**
+   - Compatible with your GPU model
+   - Minimum: CUDA 11.0 support
+   
+3. **NVIDIA Container Toolkit**
+   - [Installation Guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
+
+All other dependencies (Node.js, Python, C++ libraries) are containerized.
+
+## Quick Start
 
 ```bash
 ./start.sh
 ```
 
-**Acceso:**
-- Frontend: http://localhost:5173
-- API: http://localhost:8000
-- API Docs: http://localhost:8000/api/docs
+The startup script will:
+1. Verify system prerequisites
+2. Detect and resolve port conflicts automatically
+3. Build and deploy all services
+4. Perform health checks
+5. Display access URLs
 
-## 📋 Requisitos Previos
+**Default Access Points:**
+- Frontend: `http://localhost:5173`
+- API: `http://localhost:8000`
+- API Documentation: `http://localhost:8000/api/docs`
 
-**Debes tener instalado:**
-1. **Docker** - [Guía de instalación](https://docs.docker.com/engine/install/)
-2. **NVIDIA GPU Drivers** - Para tu tarjeta gráfica
-3. **NVIDIA Container Toolkit** - [Guía de instalación](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
+If default ports are occupied, the script automatically assigns alternative ports.
 
-El script `start.sh` verificará estos requisitos y te guiará si falta algo.
+## System Requirements
 
-**NO necesitas instalar:**
-- ❌ Node.js
-- ❌ Python
-- ❌ npm
-- ❌ Ninguna dependencia global
+### Hardware
+- NVIDIA GPU with CUDA support (compute capability 3.5+)
+- Minimum 4GB GPU memory
+- 8GB system RAM (16GB recommended)
+- 10GB available disk space
 
-Todo corre dentro de contenedores Docker.
+### Software
+- Linux operating system (Ubuntu 20.04+ recommended)
+- Docker Engine 20.10+
+- NVIDIA Driver 470+
+- NVIDIA Container Toolkit
 
-## 🏗️ Arquitectura
+## API Reference
 
-```
-┌─────────────────────┐
-│   React Frontend    │  ← Contenedor Node.js
-│   localhost:5173    │
-└──────────┬──────────┘
-           │
-           │ HTTP/REST
-           │
-┌──────────▼──────────┐
-│   FastAPI Server    │  ← Contenedor Python
-│   localhost:8000    │
-└──────────┬──────────┘
-           │
-           │ subprocess
-           │
-┌──────────▼──────────┐
-│  C++/CUDA Backend   │  ← Contenedores CUDA
-│  MPI Cluster        │
-│  (master + workers) │
-└─────────────────────┘
+### Process Image
+
+**Endpoint:** `POST /api/process`
+
+**Request Body:**
+```json
+{
+  "image": "data:image/png;base64,iVBORw0KG...",
+  "algorithm": "dithering",
+  "scale": 5,
+  "palette": "free"
+}
 ```
 
-## 📦 Servicios Docker
+**Parameters:**
+- `image` (string, required): Base64-encoded image data
+- `algorithm` (string): Processing algorithm (`dithering` | `no-dithering`)
+- `scale` (integer): Pixel size (1-20)
+- `palette` (string): Color palette (`free` | `grayscale`)
 
-El proyecto incluye 6 contenedores:
+**Response:**
+```json
+{
+  "success": true,
+  "image": "data:image/png;base64,iVBORw0KG...",
+  "message": "Image processed successfully",
+  "processing_time_ms": 1234.56,
+  "metadata": {
+    "pixel_size": 5,
+    "algorithm": "dithering",
+    "palette": "free",
+    "output_size_bytes": 45678
+  }
+}
+```
 
-1. **master** - Nodo principal MPI con CUDA
-2. **worker1** - Nodo worker MPI con CUDA
-3. **worker2** - Nodo worker MPI con CUDA
-4. **api** - Servidor FastAPI (Python)
-5. **frontend** - Servidor Vite (Node.js)
+### Health Check
 
-Todos se levantan automáticamente con `./start.sh`
+**Endpoint:** `GET /api/health`
 
-## 🎯 Uso
+**Response:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-11-24T12:34:56.789Z",
+  "version": "1.0.0",
+  "cuda_available": true
+}
+```
 
-1. **Abrir**: http://localhost:5173
-2. **Cargar imagen**: Click en "Examinar..."
-3. **Configurar**:
-   - Dithering: On/Off
-   - Scale: 1-20
-   - Palette: free/grayscale
-4. **Procesar**: Click en "Procesar"
-5. **Descargar**: Click en "Descargar"
+## Container Services
 
-## 🛠️ Comandos Útiles
+| Service | Description | Port | GPU |
+|---------|-------------|------|-----|
+| `master` | MPI master node with CUDA | 2222 | Yes |
+| `worker1` | MPI worker node with CUDA | 2223 | Yes |
+| `worker2` | MPI worker node with CUDA | 2224 | Yes |
+| `api` | FastAPI REST server | 8000 | No |
+| `frontend` | Vite development server | 5173 | No |
+
+## Development
+
+### View Logs
 
 ```bash
-# Ver logs de todos los servicios
+# All services
 docker compose logs -f
 
-# Ver logs de un servicio específico
-docker compose logs -f frontend
+# Specific service
 docker compose logs -f api
+docker compose logs -f frontend
+```
 
-# Detener todos los servicios
-docker compose down
+### Restart Services
 
-# Reiniciar servicios
+```bash
+# All services
 docker compose restart
 
-# Reconstruir y reiniciar
-docker compose up --build -d
-
-# Ver estado de contenedores
-docker compose ps
-```
-
-## 🔧 Desarrollo
-
-### Modificar Frontend
-
-Los cambios en `frontend/src/` se reflejan automáticamente gracias a hot-reload de Vite.
-
-```bash
-# Editar archivos en frontend/src/
-# El navegador se recarga automáticamente
-```
-
-### Modificar API
-
-```bash
-# Editar backend/api_server.py
+# Specific service
 docker compose restart api
 ```
 
-### Modificar Backend C++/CUDA
+### Rebuild After Code Changes
 
 ```bash
-# Editar archivos en backend/shared/pixelux/
-# Recompilar dentro del contenedor
+# Backend C++/CUDA
 docker exec -it master bash
 cd /home/mpiuser/shared/pixelart
 make clean && make mpi
+exit
+
+# API Server
+docker compose restart api
+
+# Frontend (auto-reloads via hot module replacement)
+# No action needed
 ```
 
-## 🐛 Troubleshooting
+### Stop All Services
 
-### Error: "NVIDIA GPU drivers not found"
 ```bash
-# Instalar drivers NVIDIA
-sudo apt-get install nvidia-driver-535
-sudo reboot
+docker compose down
 ```
 
-### Error: "Permission denied" al ejecutar Docker
-```bash
-# Agregar usuario al grupo docker
-sudo usermod -aG docker $USER
-# Cerrar sesión y volver a entrar
+## Configuration
+
+### Environment Variables
+
+**API Server** (`docker-compose.yml`):
+```yaml
+environment:
+  - PIXELART_BINARY=/home/mpiuser/shared/pixelart/pixelart_mpi
+  - TEMP_DIR=/tmp/pixelux
+  - ALLOWED_ORIGINS=http://localhost:5173
+  - DEBUG=false
+  - MAX_IMAGE_SIZE=10485760  # 10MB
 ```
 
-### Frontend no carga
-```bash
-# Ver logs
-docker compose logs frontend
-
-# Reiniciar
-docker compose restart frontend
+**Frontend** (`docker-compose.yml`):
+```yaml
+environment:
+  - VITE_API_URL=http://localhost:8000
 ```
 
-### API no responde
+### Port Configuration
+
+Ports are automatically assigned by the startup script. To manually specify:
+
 ```bash
-# Ver logs
+export PIXELUX_FRONTEND_PORT=5173
+export PIXELUX_API_PORT=8000
+./start.sh
+```
+
+## Performance Optimization
+
+### GPU Utilization
+
+Monitor GPU usage:
+```bash
+docker exec -it master nvidia-smi
+```
+
+### Batch Processing
+
+For processing multiple images, use the MPI batch mode:
+```bash
+docker exec -it master bash
+cd /home/mpiuser/shared/pixelart
+mpirun -np 3 ./pixelart_mpi --mpi-batch ./input ./output 8 6 1 0 4
+```
+
+## Troubleshooting
+
+### API Not Responding
+
+```bash
+# Check API logs
 docker compose logs api
 
-# Verificar que master esté corriendo
-docker compose ps
+# Verify binary exists
+docker exec -it master ls -lh /home/mpiuser/shared/pixelart/pixelart_mpi
 
-# Reiniciar
-docker compose restart api master
+# Recompile if necessary
+docker exec -it master bash -c "cd /home/mpiuser/shared/pixelart && make clean && make mpi"
 ```
 
-## 📊 Estructura del Proyecto
+### GPU Not Detected
 
-```
-pixelux/
-├── docker-compose.yml          # Orquestación de todos los servicios
-├── start.sh                    # Script de inicio automático
-├── README.md
-│
-├── backend/
-│   ├── dockerfile              # Imagen CUDA/MPI
-│   ├── Dockerfile.api          # Imagen API Python
-│   ├── docker-compose.yml      # (legacy, usar root)
-│   ├── api_server.py           # Servidor FastAPI
-│   ├── requirements.txt
-│   └── shared/
-│       └── pixelart/
-│           ├── pixelart_mpi.cpp
-│           ├── cuda_kernels.cu
-│           └── makefile
-│
-└── frontend/
-    ├── Dockerfile.dev          # Imagen Node.js dev
-    ├── .dockerignore
-    ├── package.json
-    └── src/
-        ├── App.jsx
-        ├── services/
-        │   └── api.js
-        └── componentes/
-            ├── ProcessBox.jsx
-            ├── UploadBox.jsx
-            └── Menu.jsx
-```
-
-## 🚀 Producción
-
-Para producción, considera:
-
-1. **Build frontend estático**:
 ```bash
-# Crear Dockerfile.prod para frontend
-FROM node:20-alpine AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
+# Verify NVIDIA drivers
+nvidia-smi
 
-FROM nginx:alpine
-COPY --from=build /app/dist /usr/share/nginx/html
+# Test GPU in container
+docker run --rm --gpus all nvidia/cuda:11.0-base nvidia-smi
+
+# Check NVIDIA Container Toolkit
+docker info | grep -i nvidia
 ```
 
-2. **Configurar HTTPS** con nginx/traefik
-3. **Actualizar ALLOWED_ORIGINS** en docker-compose.yml
-4. **Configurar límites de recursos**
-5. **Implementar logging centralizado**
+### Port Conflicts
 
-## 📝 Licencia
+The startup script automatically resolves port conflicts. To check current ports:
+```bash
+docker port pixelux-frontend
+docker port pixelux-api
+```
 
-[Especificar licencia]
+## Production Deployment
 
-## 🤝 Contribuciones
+For production environments:
 
-[Especificar guías de contribución]
+1. **Build optimized frontend:**
+   ```bash
+   cd frontend
+   npm run build
+   ```
+
+2. **Update CORS origins** in `docker-compose.yml`
+3. **Enable HTTPS** with reverse proxy (nginx/traefik)
+4. **Configure resource limits** in `docker-compose.yml`
+5. **Set up monitoring** (Prometheus/Grafana)
+6. **Implement rate limiting** in API server
+
+## Technical Stack
+
+- **Backend Processing:** C++17, CUDA 11.0, OpenCV 4.x, OpenMPI
+- **API Server:** Python 3.11, FastAPI 0.115, Uvicorn
+- **Frontend:** React 19, Vite 7, JavaScript ES2022
+- **Containerization:** Docker 20.10+, Docker Compose 2.x
+- **GPU Runtime:** NVIDIA Container Toolkit
+
+## License
+
+[Specify License]
+
+## Contributing
+
+[Specify Contribution Guidelines]
