@@ -1,0 +1,51 @@
+# Dockerfile.api - Legacy version with minimal Python image
+# This version is lighter but requires careful library matching
+# Use the current Dockerfile.api (CUDA-based) for guaranteed compatibility
+
+FROM python:3.11-slim
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Create app directory
+WORKDIR /app
+
+# Install system dependencies including OpenCV runtime libraries
+# NOTE: Version numbers (4.6d, 4.5d) may vary by Ubuntu version
+# Check available versions with: apt-cache search libopencv
+RUN apt-get update && apt-get install -y \
+    libopencv-dev \
+    libopencv-core4.5d \
+    libopencv-imgcodecs4.5d \
+    libopencv-imgproc4.5d \
+    libopencv-highgui4.5d \
+    libgomp1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy API server code
+COPY api_server.py .
+
+# Copy binary verification script
+COPY check_binary.sh /usr/local/bin/check_binary.sh
+RUN chmod +x /usr/local/bin/check_binary.sh
+
+# Create temp directory for image processing
+RUN mkdir -p /tmp/pixelux && chmod 777 /tmp/pixelux
+
+# Expose API port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8000/api/health || exit 1
+
+# Run binary check then start API server
+CMD ["/bin/bash", "-c", "/usr/local/bin/check_binary.sh && python api_server.py"]

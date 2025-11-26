@@ -6,6 +6,10 @@ High-performance pixel art conversion system leveraging CUDA-accelerated GPU pro
 
 Pixelux is a production-grade image processing pipeline that transforms standard images into pixel art using GPU-accelerated algorithms. The system employs a distributed architecture with CUDA kernels for parallel processing, MPI for cluster coordination, and a modern web interface for user interaction.
 
+**📚 Deployment Guides:**
+- **[Quick Start (Español)](QUICKSTART.md)** - 5-minute deployment guide
+- **[Full Deployment Guide](DEPLOYMENT.md)** - Comprehensive setup and troubleshooting
+
 **Key Features:**
 - GPU-accelerated image processing with CUDA
 - Distributed computing via MPI cluster
