@@ -115,6 +115,31 @@ class HealthResponse(BaseModel):
 
 
 # Helper functions
+def check_binary_health() -> tuple[bool, str]:
+    """Check if binary exists and is executable with required libraries"""
+    if not Path(PIXELART_BINARY).exists():
+        return False, f"Binary not found: {PIXELART_BINARY}"
+    
+    if not os.access(PIXELART_BINARY, os.X_OK):
+        return False, f"Binary not executable: {PIXELART_BINARY}"
+    
+    # Try to run ldd to check libraries
+    try:
+        result = subprocess.run(
+            ['ldd', PIXELART_BINARY],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        if 'not found' in result.stdout:
+            return False, f"Binary has missing libraries: {result.stdout}"
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        # ldd not available or timeout, skip library check
+        pass
+    
+    return True, "Binary is ready"
+
+
 def decode_base64_image(base64_str: str) -> bytes:
     """Decode base64 image string to bytes"""
     # Remove data URI prefix if present
@@ -221,11 +246,18 @@ def process_image_with_cuda(
         return True, "Image processed successfully"
         
     except subprocess.TimeoutExpired:
-        error_msg = "Processing timeout exceeded (60 seconds)"
+        error_msg = "Processing timeout exceeded (120 seconds)"
         logger.error(error_msg)
         return False, error_msg
     except FileNotFoundError:
         error_msg = f"Binary not found: {PIXELART_BINARY}"
+        logger.error(error_msg)
+        return False, error_msg
+    except OSError as e:
+        if e.errno == 8:  # Exec format error
+            error_msg = f"Binary format error: Binary may be compiled for different architecture"
+        else:
+            error_msg = f"OS error executing binary: {str(e)}"
         logger.error(error_msg)
         return False, error_msg
     except Exception as e:
@@ -254,7 +286,7 @@ async def health_check():
         status=status_msg,
         timestamp=datetime.utcnow().isoformat(),
         version="1.0.0",
-        cuda_available=cuda_available
+        cuda_available=binary_ok
     )
 
 
@@ -379,10 +411,31 @@ if __name__ == "__main__":
     port = int(os.getenv('PORT', 8000))
     host = os.getenv('HOST', '0.0.0.0')
     
-    logger.info(f"Starting Pixelux API server on {host}:{port}")
+    logger.info("="*60)
+    logger.info("Starting Pixelux API server")
+    logger.info(f"Server: {host}:{port}")
     logger.info(f"PIXELART_BINARY: {PIXELART_BINARY}")
     logger.info(f"TEMP_DIR: {TEMP_DIR}")
     logger.info(f"ALLOWED_ORIGINS: {ALLOWED_ORIGINS}")
+    logger.info("="*60)
+    
+    # Startup validation
+    logger.info("Running startup validation...")
+    binary_ok, message = check_binary_health()
+    if binary_ok:
+        logger.info(f"✅ Binary check passed: {message}")
+    else:
+        logger.error(f"❌ Binary check failed: {message}")
+        logger.error("API will start but image processing will fail!")
+    
+    # Check CUDA availability
+    cuda_path = os.getenv('CUDA_HOME', '/usr/local/cuda')
+    if Path(cuda_path).exists():
+        logger.info(f"✅ CUDA found at: {cuda_path}")
+    else:
+        logger.warning(f"⚠️  CUDA not found at: {cuda_path}")
+    
+    logger.info("="*60)
     
     uvicorn.run(
         "api_server:app",

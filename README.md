@@ -6,6 +6,9 @@ High-performance pixel art conversion system leveraging CUDA-accelerated GPU pro
 
 Pixelux is a production-grade image processing pipeline that transforms standard images into pixel art using GPU-accelerated algorithms. The system employs a distributed architecture with CUDA kernels for parallel processing, MPI for cluster coordination, and a modern web interface for user interaction.
 
+**📚 Documentation:**
+- **[Fixes History](FIXES_HISTORY.md)** - Complete troubleshooting reference
+
 **Key Features:**
 - GPU-accelerated image processing with CUDA
 - Distributed computing via MPI cluster
@@ -46,32 +49,42 @@ Pixelux is a production-grade image processing pipeline that transforms standard
 
 ## Prerequisites
 
-The following must be installed on the host system:
+Your machine must have the following installed:
 
-1. **Docker Engine** (20.10+)
+1. **NVIDIA GPU with CUDA Support**
+   - Compute capability 3.5 or higher
+   - Minimum 4GB GPU memory
+   - CUDA 11.0 or higher
+
+2. **NVIDIA GPU Drivers**
+   - Driver version 470 or higher
+   - [Download NVIDIA Drivers](https://www.nvidia.com/Download/index.aspx)
+
+3. **Docker Engine** (20.10+)
    - [Installation Guide](https://docs.docker.com/engine/install/)
    
-2. **NVIDIA GPU Drivers**
-   - Compatible with your GPU model
-   - Minimum: CUDA 11.0 support
-   
-3. **NVIDIA Container Toolkit**
+4. **NVIDIA Container Toolkit**
+   - Required for GPU access within Docker containers
    - [Installation Guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
 
 All other dependencies (Node.js, Python, C++ libraries) are containerized.
 
 ## Quick Start
 
+**Important:** Ensure Docker, NVIDIA drivers, and NVIDIA Container Toolkit are installed before running the script.
+
 ```bash
 ./start.sh
 ```
 
 The startup script will:
-1. Verify system prerequisites
-2. Detect and resolve port conflicts automatically
-3. Build and deploy all services
-4. Perform health checks
-5. Display access URLs
+1. Verify Docker installation
+2. Verify NVIDIA drivers and GPU availability
+3. Verify NVIDIA Container Toolkit configuration
+4. Detect and resolve port conflicts automatically
+5. Build and deploy all services
+6. Perform health checks
+7. Display access URLs
 
 **Default Access Points:**
 - Frontend: `http://localhost:5173`

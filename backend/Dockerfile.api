@@ -3,8 +3,16 @@ FROM nvidia/cuda:13.0.1-cudnn-devel-ubuntu24.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
-# Install system dependencies
+# Install system dependencies including Python, OpenCV, and all runtime libraries
 RUN apt-get update && apt-get install -y \
+    # Python
+    python3.11 \
+    python3-pip \
+    python3.11-dev \
+    # Build tools
+    build-essential \
+    cmake \
+    # OpenCV and image processing (Ubuntu 24.04 = v4.6)
     libopencv-dev \
     python3 \
     python3-dev \
@@ -32,6 +40,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy API server code
 COPY api_server.py .
 
+# Copy binary verification script
+COPY check_binary.sh /usr/local/bin/check_binary.sh
+RUN chmod +x /usr/local/bin/check_binary.sh
+
 # Create temp directory for image processing
 RUN mkdir -p /tmp/pixelux && chmod 777 /tmp/pixelux
 
@@ -39,8 +51,8 @@ RUN mkdir -p /tmp/pixelux && chmod 777 /tmp/pixelux
 EXPOSE 8000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/api/health')" || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD python3 -c "import requests; requests.get('http://localhost:8000/api/health')" || exit 1
 
-# Run the API server
-CMD ["python", "api_server.py"]
+# Run binary check then start API server
+CMD ["/bin/bash", "-c", "/usr/local/bin/check_binary.sh && python3 api_server.py"]
