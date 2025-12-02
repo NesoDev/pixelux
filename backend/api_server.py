@@ -17,7 +17,7 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 import uvicorn
 
 # Configure logging
@@ -66,8 +66,9 @@ class ProcessImageRequest(BaseModel):
     scale: int = Field(default=5, ge=1, le=20, description="Pixel size (1-20)")
     palette: str = Field(default="free", description="Color palette: 'free', 'grayscale', etc.")
     
-    @validator('image')
-    def validate_image(cls, v):
+    @field_validator('image')
+    @classmethod
+    def validate_image(cls, v: str) -> str:
         """Validate base64 image data"""
         if not v:
             raise ValueError("Image data cannot be empty")
@@ -86,8 +87,9 @@ class ProcessImageRequest(BaseModel):
         
         return v
     
-    @validator('algorithm')
-    def validate_algorithm(cls, v):
+    @field_validator('algorithm')
+    @classmethod
+    def validate_algorithm(cls, v: str) -> str:
         """Validate algorithm choice"""
         allowed = ['dithering', 'no-dithering']
         if v not in allowed:
@@ -181,17 +183,26 @@ def process_image_with_cuda(
         
         logger.info(f"Executing command: {' '.join(cmd)}")
         
-        # Execute with timeout
+        # FIX: Usar capture_output=False y manejar la salida manualmente
+        # O usar subprocess.PIPE con decode apropiado
         result = subprocess.run(
             cmd,
             capture_output=True,
-            text=True,
-            timeout=60,  # 60 second timeout
+            text=False,  # IMPORTANTE: No intentar decodificar como texto
+            timeout=60,
             check=False
         )
         
+        # Decodificar stderr de forma segura
+        stderr_text = ""
+        if result.stderr:
+            try:
+                stderr_text = result.stderr.decode('utf-8', errors='replace')
+            except UnicodeDecodeError:
+                stderr_text = result.stderr.decode('latin-1', errors='replace')
+        
         if result.returncode != 0:
-            error_msg = f"Processing failed with return code {result.returncode}: {result.stderr}"
+            error_msg = f"Processing failed with return code {result.returncode}: {stderr_text}"
             logger.error(error_msg)
             return False, error_msg
         
@@ -200,7 +211,13 @@ def process_image_with_cuda(
             logger.error(error_msg)
             return False, error_msg
         
-        logger.info(f"Processing successful: {output_path}")
+        # Verificar que el archivo de salida no esté vacío
+        if output_path.stat().st_size == 0:
+            error_msg = "Processing completed but output file is empty"
+            logger.error(error_msg)
+            return False, error_msg
+        
+        logger.info(f"Processing successful: {output_path} (size: {output_path.stat().st_size} bytes)")
         return True, "Image processed successfully"
         
     except subprocess.TimeoutExpired:
@@ -221,10 +238,20 @@ def process_image_with_cuda(
 @app.get("/api/health", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint"""
-    cuda_available = Path(PIXELART_BINARY).exists()
+    # Verificar si el binario existe y es ejecutable
+    binary_exists = Path(PIXELART_BINARY).exists()
+    binary_executable = os.access(PIXELART_BINARY, os.X_OK)
+    
+    cuda_available = binary_exists and binary_executable
+    
+    status_msg = "healthy" if cuda_available else "degraded"
+    if not binary_exists:
+        status_msg = "binary_not_found"
+    elif not binary_executable:
+        status_msg = "binary_not_executable"
     
     return HealthResponse(
-        status="healthy" if cuda_available else "degraded",
+        status=status_msg,
         timestamp=datetime.utcnow().isoformat(),
         version="1.0.0",
         cuda_available=cuda_available
@@ -235,24 +262,25 @@ async def health_check():
 async def process_image(request: ProcessImageRequest):
     """
     Process an image to convert it to pixel art.
-    
-    Args:
-        request: ProcessImageRequest with image data and parameters
-        
-    Returns:
-        ProcessImageResponse with processed image or error message
     """
     start_time = datetime.now()
     request_id = str(uuid.uuid4())[:8]
     
     logger.info(f"[{request_id}] Processing request: scale={request.scale}, algorithm={request.algorithm}, palette={request.palette}")
     
-    # Create temporary files
+    # Verificar que el binario exista
+    if not Path(PIXELART_BINARY).exists():
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Processing binary not found: {PIXELART_BINARY}"
+        )
+    
+    # Crear archivos temporales
     input_path = TEMP_DIR / f"{request_id}_input.png"
     output_path = TEMP_DIR / f"{request_id}_output.png"
     
     try:
-        # Decode and save input image
+        # Decodificar y guardar imagen de entrada
         try:
             image_data = decode_base64_image(request.image)
             with open(input_path, 'wb') as f:
@@ -264,7 +292,7 @@ async def process_image(request: ProcessImageRequest):
                 detail=f"Failed to decode image: {str(e)}"
             )
         
-        # Process image
+        # Procesar imagen
         dither_type = get_dither_type(request.algorithm)
         color_bits = get_color_bits(request.palette)
         grayscale = is_grayscale(request.palette)
@@ -284,7 +312,7 @@ async def process_image(request: ProcessImageRequest):
                 detail=message
             )
         
-        # Encode output image
+        # Codificar imagen de salida
         try:
             output_base64 = encode_image_to_base64(output_path)
             output_size = output_path.stat().st_size
@@ -295,7 +323,7 @@ async def process_image(request: ProcessImageRequest):
                 detail=f"Failed to encode output image: {str(e)}"
             )
         
-        # Calculate processing time
+        # Calcular tiempo de procesamiento
         processing_time = (datetime.now() - start_time).total_seconds() * 1000
         
         logger.info(f"[{request_id}] Processing completed in {processing_time:.2f}ms")
@@ -322,7 +350,7 @@ async def process_image(request: ProcessImageRequest):
             detail=f"Internal server error: {str(e)}"
         )
     finally:
-        # Cleanup temporary files
+        # Limpieza de archivos temporales
         try:
             if input_path.exists():
                 input_path.unlink()
@@ -342,12 +370,11 @@ async def global_exception_handler(request, exc):
         content={
             "success": False,
             "message": "An unexpected error occurred",
-            "detail": str(exc) if os.getenv('DEBUG') else None
+            "detail": str(exc) if os.getenv('DEBUG', 'false').lower() == 'true' else None
         }
     )
 
 
-# Main entry point
 if __name__ == "__main__":
     port = int(os.getenv('PORT', 8000))
     host = os.getenv('HOST', '0.0.0.0')

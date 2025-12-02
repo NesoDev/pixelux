@@ -3,14 +3,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: master
+    container_name: onemaster
     hostname: master
     ports:
       - "2222:22"
     volumes:
       - ./shared:/home/mpiuser/shared
     networks:
-      mpi-net:
+      mpi:
         ipv4_address: 172.28.1.2
     deploy:
       resources:
@@ -24,14 +24,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: worker1
+    container_name: nodo1
     hostname: worker1
     ports:
       - "2223:22"
     volumes:
       - ./shared:/home/mpiuser/shared
     networks:
-      mpi-net:
+      mpi:
         ipv4_address: 172.28.1.3
     deploy:
       resources:
@@ -45,14 +45,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: worker2
+    container_name: nodo2
     hostname: worker2
     ports:
       - "2224:22"
     volumes:
       - ./shared:/home/mpiuser/shared
     networks:
-      mpi-net:
+      mpi:
         ipv4_address: 172.28.1.4
     deploy:
       resources:
@@ -73,7 +73,7 @@ services:
     volumes:
       - ./shared:/home/mpiuser/shared
     networks:
-      mpi-net:
+      mpi:
         ipv4_address: 172.28.1.5
     environment:
       - PIXELART_BINARY=/home/mpiuser/shared/pixelart/pixelart_mpi
@@ -84,16 +84,29 @@ services:
       - DEBUG=false
     depends_on:
       - master
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/api/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import requests; requests.get('http://localhost:8000/api/health')",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
 
 networks:
-  mpi-net:
+  mpi:
     driver: bridge
     ipam:
       config:
