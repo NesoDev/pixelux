@@ -7,6 +7,15 @@
   display: block;
 }
 
+.app {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .app h1 {
   font-size: 2.5rem;
   margin: 0.5rem 0;
@@ -15,3 +24,4 @@
 .app p {
   color: #888;
 }
+

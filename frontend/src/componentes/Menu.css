@@ -1,48 +1,121 @@
 .menu-box {
   margin: 2rem auto 0 auto;
-  padding: 1.5rem 1.2rem;
+  padding: 1.5rem;
   background: #181818;
   border-radius: 1.5rem;
   box-shadow: 0 2px 16px 0 #0006;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  max-width: 350px;
+  max-width: 95vw;
   width: 100%;
   box-sizing: border-box;
 }
 
-.menu-row {
-  display: flex;
-  align-items: center;
-  margin-bottom: 1.2rem;
+@media (min-width: 768px) {
+  .menu-box {
+    max-width: 600px;
+  }
+}
+
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
   width: 100%;
-  justify-content: space-between;
+}
+
+@media (max-width: 600px) {
+  .menu-grid {
+    grid-template-columns: 1fr;
+    gap: 1.2rem;
+  }
+}
+
+.menu-column {
+  display: flex;
+  flex-direction: column;
+  justify-content: start;
+  gap: 0.5rem;
 }
 
 .menu-label {
-  color: #fff;
-  font-size: 1rem;
-  margin-right: 0.7rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: start;
 }
 
 .menu-select {
   background: #232323;
   color: #fff;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.5rem;
-  padding: 0.3rem 1rem;
-  font-size: 1rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.menu-select:hover {
+  border-color: rgba(100, 108, 255, 0.5);
+  background: #2a2a2a;
+}
+
+.menu-select:focus {
+  outline: none;
+  border-color: #646cff;
 }
 
 .menu-range {
-  width: 120px;
-  margin: 0 0.7rem;
+  width: 100%;
+  height: 6px;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  outline: none;
 }
 
-.menu-scale-value {
-  color: #fff;
-  font-size: 1rem;
-  min-width: 2.5rem;
-  text-align: right;
+.menu-range::-webkit-slider-track {
+  background: rgba(255, 255, 255, 0.1);
+  height: 6px;
+  border-radius: 3px;
+  border: none;
+}
+
+.menu-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #646cff;
+  cursor: pointer;
+  margin-top: 0px;
+  transition: all 0.2s;
+}
+
+.menu-range::-webkit-slider-thumb:hover {
+  background: #535bf2;
+  transform: scale(1.1);
+}
+
+.menu-range::-moz-range-track {
+  background: rgba(255, 255, 255, 0.1);
+  height: 6px;
+  border-radius: 3px;
+}
+
+.menu-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #646cff;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.menu-range::-moz-range-thumb:hover {
+  background: #535bf2;
+  transform: scale(1.1);
 }

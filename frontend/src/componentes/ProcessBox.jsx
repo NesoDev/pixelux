@@ -2,109 +2,219 @@ import './ProcessBox.css'
 import { useState, useEffect } from 'react'
 import { processImage } from '../services/api'
 
-export default function ProcessBox({ imageLoaded, backendData }) {
-  const [loading, setLoading] = useState(false)
-  const [done, setDone] = useState(false)
+export default function ProcessBox({ images, processingSettings, results, setResults, isProcessing, setIsProcessing }) {
   const [error, setError] = useState(null)
-  const [processedImage, setProcessedImage] = useState(null)
-  const [processingTime, setProcessingTime] = useState(null)
+  const [processingProgress, setProcessingProgress] = useState({})
 
   useEffect(() => {
-    setLoading(false)
-    setDone(false)
+    // Reset when images change
     setError(null)
-    setProcessedImage(null)
-    setProcessingTime(null)
-  }, [imageLoaded])
+    setProcessingProgress({})
+  }, [images])
 
-  const handleProcess = async () => {
-    setLoading(true)
-    setDone(false)
+  const handleProcessAll = async () => {
+    if (images.length === 0) return
+
+    setIsProcessing(true)
     setError(null)
-    setProcessingTime(null)
+    setResults([])
+    setProcessingProgress({})
+
+    const startTime = Date.now()
 
     try {
-      const result = await processImage(backendData)
+      // MOCK MODE - Simula procesamiento con imágenes reales del backend
+      const MOCK_MODE = false
 
-      if (result.success) {
-        setProcessedImage(result.image)
-        setProcessingTime(result.processing_time_ms)
-        setDone(true)
+      if (MOCK_MODE) {
+        // Simular carga de imágenes desde backend/shared/pixelart
+        const mockBackendImages = [
+          { original: '/backend/shared/pixelart/entradas/input-1.jpg', processed: '/backend/shared/pixelart/salidas/input-1_pixelart.png' },
+          { original: '/backend/shared/pixelart/entradas/input-2.jpg', processed: '/backend/shared/pixelart/salidas/input-2_pixelart.png' },
+          { original: '/backend/shared/pixelart/entradas/input-3.jpg', processed: '/backend/shared/pixelart/salidas/input-3_pixelart.png' }
+        ]
+
+        const promises = images.map(async (img, index) => {
+          setProcessingProgress(prev => ({
+            ...prev,
+            [img.id]: { status: 'processing', progress: 0 }
+          }))
+
+          // Simular delay de procesamiento
+          await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000))
+
+          const imageStartTime = Date.now()
+
+          // Usar imagen mock del backend (ciclar si hay más imágenes cargadas que mocks)
+          const mockIndex = index % mockBackendImages.length
+
+          // Simular resultado exitoso
+          const imageEndTime = Date.now()
+          const processingTime = imageEndTime - imageStartTime + 200 + Math.random() * 300
+
+          setProcessingProgress(prev => ({
+            ...prev,
+            [img.id]: { status: 'completed', progress: 100 }
+          }))
+
+          return {
+            id: img.id,
+            originalName: img.name,
+            originalData: img.data, // Usar la imagen que el usuario subió como "original"
+            processedData: img.data, // Por ahora usar la misma (en producción sería la procesada)
+            processingTime: Math.round(processingTime),
+            metadata: {}
+          }
+        })
+
+        const processedResults = await Promise.all(promises)
+        const totalTime = Date.now() - startTime
+
+        setResults(processedResults.map(r => ({
+          ...r,
+          totalBatchTime: totalTime
+        })))
+
       } else {
-        setError(result.message || 'Processing failed')
+        // Modo real - procesamiento con backend
+        // Process all images in parallel
+        const promises = images.map(async (img, index) => {
+          setProcessingProgress(prev => ({
+            ...prev,
+            [img.id]: { status: 'processing', progress: 0 }
+          }))
+
+          try {
+            const imageStartTime = Date.now()
+
+            const result = await processImage({
+              image: img.data,
+              ...processingSettings
+            })
+
+            const imageEndTime = Date.now()
+            const processingTime = imageEndTime - imageStartTime
+
+            setProcessingProgress(prev => ({
+              ...prev,
+              [img.id]: { status: 'completed', progress: 100 }
+            }))
+
+            if (result.success) {
+              return {
+                id: img.id,
+                originalName: img.name,
+                originalData: img.data,
+                processedData: result.image,
+                processingTime: processingTime,
+                metadata: result.metadata
+              }
+            } else {
+              throw new Error(result.message || 'Processing failed')
+            }
+          } catch (err) {
+            setProcessingProgress(prev => ({
+              ...prev,
+              [img.id]: { status: 'error', progress: 0 }
+            }))
+            console.error(`Error processing ${img.name}:`, err)
+            return {
+              id: img.id,
+              originalName: img.name,
+              error: err.message
+            }
+          }
+        })
+
+        const processedResults = await Promise.all(promises)
+        const totalTime = Date.now() - startTime
+
+        // Filter out errors and add total time info
+        const successfulResults = processedResults.filter(r => !r.error)
+
+        setResults(successfulResults.map(r => ({
+          ...r,
+          totalBatchTime: totalTime
+        })))
+
+        // Show error if some failed
+        const failedCount = processedResults.filter(r => r.error).length
+        if (failedCount > 0) {
+          setError(`${failedCount} de ${images.length} imágenes fallaron al procesarse`)
+        }
       }
+
     } catch (err) {
-      console.error('Processing error:', err)
-      setError(err.message || 'Failed to process image. Please check if the API server is running.')
+      console.error('Batch processing error:', err)
+      setError(err.message || 'Error al procesar imágenes')
     } finally {
-      setLoading(false)
+      setIsProcessing(false)
     }
   }
 
-  const handleDownload = () => {
-    if (!processedImage) return
+  if (images.length === 0) return null
 
-    try {
-      // Create a temporary link to download the image
-      const link = document.createElement('a')
-      link.href = processedImage
-      link.download = `pixelart_${Date.now()}.png`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    } catch (err) {
-      console.error('Download error:', err)
-      setError('Failed to download image')
-    }
-  }
-
-  if (!imageLoaded) return null
+  const hasResults = results.length > 0
+  const processingList = Object.entries(processingProgress)
 
   return (
     <div className="process-box">
       {error && (
-        <div className="error-message" style={{
-          color: '#ff4444',
-          padding: '1rem',
-          marginBottom: '1rem',
-          borderRadius: '8px',
-          backgroundColor: 'rgba(255, 68, 68, 0.1)',
-          border: '1px solid rgba(255, 68, 68, 0.3)'
-        }}>
-          ⚠️ {error}
+        <div className="error-message">
+          <span className="status-icon error-icon">!</span> {error}
         </div>
       )}
 
-      {!loading && !done && (
-        <button className="process-btn" onClick={handleProcess}>
-          Procesar
+      {!isProcessing && !hasResults && (
+        <button className="process-btn process-btn-primary" onClick={handleProcessAll}>
+          Procesar Todas ({images.length})
         </button>
       )}
 
-      {loading && (
-        <div className="loading-grid">
-          {[...Array(9)].map((_, i) => (
-            <span key={i} className={`loading-dot loading-dot-${i}`}></span>
-          ))}
+      {isProcessing && (
+        <div className="processing-status">
+          <div className="processing-header">
+            <div className="loading-spinner"></div>
+            <span>Procesando en paralelo...</span>
+          </div>
+          <div className="progress-list">
+            {images.map(img => {
+              const progress = processingProgress[img.id]
+              const status = progress?.status || 'waiting'
+
+              return (
+                <div key={img.id} className={`progress-item progress-${status}`}>
+                  <span className="progress-name">{img.name}</span>
+                  <div className="progress-bar-container">
+                    <div
+                      className="progress-bar"
+                      style={{ width: status === 'processing' ? '50%' : status === 'completed' ? '100%' : '0%' }}
+                    ></div>
+                  </div>
+                  <span className={`progress-status status-${status}`}>
+                    {status === 'waiting' && <span className="status-icon">○</span>}
+                    {status === 'processing' && <span className="status-icon processing">◐</span>}
+                    {status === 'completed' && <span className="status-icon">✓</span>}
+                    {status === 'error' && <span className="status-icon">✗</span>}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
-      {!loading && done && (
-        <>
-          {processingTime && (
-            <div style={{
-              fontSize: '0.9rem',
-              color: '#888',
-              marginBottom: '0.5rem'
-            }}>
-              Procesado en {processingTime.toFixed(0)}ms
-            </div>
-          )}
-          <button className="process-btn" onClick={handleDownload}>
-            Descargar
+      {hasResults && !isProcessing && (
+        <div className="process-complete">
+          <div className="success-message">
+            <span className="status-icon success-icon">✓</span> {results.length} imagen{results.length !== 1 ? 'es' : ''} procesada{results.length !== 1 ? 's' : ''} exitosamente
+          </div>
+          <button className="process-btn process-btn-secondary" onClick={handleProcessAll}>
+            Procesar Nuevamente
           </button>
-        </>
+        </div>
       )}
     </div>
   )
 }
+
