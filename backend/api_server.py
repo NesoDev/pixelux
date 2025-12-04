@@ -62,7 +62,7 @@ app.add_middleware(
 class ProcessImageRequest(BaseModel):
     """Request model for image processing"""
     image: str = Field(..., description="Base64 encoded image data (with or without data URI prefix)")
-    algorithm: str = Field(default="no-dithering", description="Processing algorithm: 'dithering' or 'no-dithering'")
+    algorithm: str = Field(default="no-dithering", description="Processing algorithm: 'no-dithering', 'dithering-floyd', or 'dithering-order'")
     scale: int = Field(default=5, ge=1, le=20, description="Pixel size (1-20)")
     palette: str = Field(default="free", description="Color palette: 'free', 'grayscale', etc.")
     
@@ -91,7 +91,7 @@ class ProcessImageRequest(BaseModel):
     @classmethod
     def validate_algorithm(cls, v: str) -> str:
         """Validate algorithm choice"""
-        allowed = ['dithering', 'no-dithering']
+        allowed = ['no-dithering', 'dithering-floyd', 'dithering-order']
         if v not in allowed:
             raise ValueError(f"Algorithm must be one of: {allowed}")
         return v
@@ -160,8 +160,8 @@ def get_dither_type(algorithm: str) -> int:
     """Map algorithm name to dither type integer"""
     mapping = {
         'no-dithering': 0,
-        # 'dithering': 1,  # Floyd-Steinberg
-        'dithering': 2,  # Ordered-Dither
+        'dithering-floyd': 1,  # Floyd-Steinberg
+        'dithering-order': 2,  # Ordered-Dither
     }
     return mapping.get(algorithm, 0)
 

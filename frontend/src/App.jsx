@@ -10,7 +10,7 @@ import { useState, useMemo } from 'react'
 function App() {
   // Multiple images support
   const [images, setImages] = useState([])
-  const [dithering, setDithering] = useState(false)
+  const [algorithm, setAlgorithm] = useState('no-dithering')
   const [scale, setScale] = useState(5)
   const [palette, setPalette] = useState('free')
 
@@ -53,17 +53,17 @@ function App() {
 
   // Processing settings for all images
   const processingSettings = useMemo(() => ({
-    algorithm: dithering ? 'dithering' : 'no-dithering',
+    algorithm,
     scale,
     palette
-  }), [dithering, scale, palette])
+  }), [algorithm, scale, palette])
 
   return (
     <div className="app">
       <Header />
       <Menu
-        dithering={dithering}
-        setDithering={setDithering}
+        algorithm={algorithm}
+        setAlgorithm={setAlgorithm}
         scale={scale}
         setScale={setScale}
         palette={palette}

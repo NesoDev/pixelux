@@ -1,6 +1,6 @@
 import './Menu.css'
 
-export default function Menu({ dithering, setDithering, scale, setScale, palette, setPalette }) {
+export default function Menu({ dithering, setAlgorithm, scale, setScale, palette, setPalette }) {
   return (
     <div className="menu-box">
       <div className="menu-grid">
@@ -9,17 +9,18 @@ export default function Menu({ dithering, setDithering, scale, setScale, palette
           <label className="menu-label">Algoritmo</label>
           <select
             className="menu-select"
-            value={dithering ? 'dithering' : 'no-dithering'}
-            onChange={e => setDithering(e.target.value === 'dithering')}
+            value={dithering}
+            onChange={e => setAlgorithm(e.target.value)}
           >
-            <option value="dithering">Dithering</option>
             <option value="no-dithering">No dithering</option>
+            <option value="dithering-floyd">Dithering Floyd</option>
+            <option value="dithering-order">Dithering Ordenado</option>
           </select>
         </div>
 
         {/* Column 2: Escala */}
         <div className="menu-column">
-          <label className="menu-label" htmlFor="scale-range">Escala ({scale}x)</label>
+          <label className="menu-label" htmlFor="scale-range">Tamaño de Pixel ({scale}x)</label>
           <input
             id="scale-range"
             className="menu-range"

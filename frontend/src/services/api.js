@@ -8,7 +8,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
  * Process an image with the backend
  * @param {Object} data - Processing parameters
  * @param {string} data.image - Base64 encoded image
- * @param {string} data.algorithm - Processing algorithm ('dithering' or 'no-dithering')
+ * @param {string} data.algorithm - Processing algorithm ('no-dithering', 'dithering-floyd', or 'dithering-order')
  * @param {number} data.scale - Pixel size (1-20)
  * @param {string} data.palette - Color palette
  * @returns {Promise<Object>} Processing result
