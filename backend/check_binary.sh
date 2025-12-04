@@ -5,14 +5,36 @@
 set -e
 
 BINARY="${PIXELART_BINARY:-/home/mpiuser/shared/pixelart/pixelart_mpi}"
+MAX_WAIT=${MAX_WAIT_SECONDS:-60}  # 60 segundos máximo de espera
+WAIT_INTERVAL=${WAIT_INTERVAL:-5}  # Revisar cada 5 segundos
 
 echo "=== Pixelux Binary Verification ==="
 echo "Checking binary: $BINARY"
 
-# Check if binary exists
+# Wait for binary to be created
+echo "Waiting for binary to be available (max ${MAX_WAIT}s)..."
+WAIT_TIME=0
+while [ $WAIT_TIME -lt $MAX_WAIT ]; do
+    if [ -f "$BINARY" ]; then
+        echo "✅ Binary found after ${WAIT_TIME}s"
+        break
+    fi
+    
+    echo "⏳ Binary not found yet, waiting ${WAIT_INTERVAL}s... (${WAIT_TIME}/${MAX_WAIT}s)"
+    sleep $WAIT_INTERVAL
+    WAIT_TIME=$((WAIT_TIME + WAIT_INTERVAL))
+done
+
+# Check if binary exists after waiting
 if [ ! -f "$BINARY" ]; then
-    echo "❌ ERROR: Binary not found at $BINARY"
-    echo "Please ensure the shared volume is mounted correctly and the binary has been compiled."
+    echo "❌ ERROR: Binary not found at $BINARY after ${MAX_WAIT}s"
+    echo "Please ensure:"
+    echo "1. The shared volume is mounted correctly"
+    echo "2. The master/worker containers have compiled the binary"
+    echo "3. The binary path is correct: $BINARY"
+    echo ""
+    echo "Contents of shared directory:"
+    ls -la /home/mpiuser/shared/ || echo "Cannot list shared directory"
     exit 1
 fi
 

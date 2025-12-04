@@ -84,6 +84,8 @@ services:
       - DEBUG=false
     depends_on:
       - master
+      - worker1
+      - worker2
     deploy:
       resources:
         reservations:

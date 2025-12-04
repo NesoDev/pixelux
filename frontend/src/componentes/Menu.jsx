@@ -40,9 +40,13 @@ export default function Menu({ dithering, setDithering, scale, setScale, palette
             value={palette}
             onChange={e => setPalette(e.target.value)}
           >
-            <option value="free">Free colors</option>
-            <option value="paid">Paid colors</option>
-            <option value="both">Both</option>
+            <option value="4-colors">4 colors (2 bits)</option>
+            <option value="8-colors">8 colors (3 bits)</option>
+            <option value="16-colors">16 colors (4 bits)</option>
+            <option value="frees">32 colors (Free)</option>
+            <option value="paid">64 colors (Paid)</option>
+            <option value="128-colors">128 colors (7 bits)</option>
+            <option value="256-colors">256 colors (8 bits)</option>
           </select>
         </div>
       </div>

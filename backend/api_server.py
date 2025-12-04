@@ -160,7 +160,8 @@ def get_dither_type(algorithm: str) -> int:
     """Map algorithm name to dither type integer"""
     mapping = {
         'no-dithering': 0,
-        'dithering': 1,  # Floyd-Steinberg
+        # 'dithering': 1,  # Floyd-Steinberg
+        'dithering': 2,  # Ordered-Dither
     }
     return mapping.get(algorithm, 0)
 
@@ -168,11 +169,15 @@ def get_dither_type(algorithm: str) -> int:
 def get_color_bits(palette: str) -> int:
     """Map palette name to color bits"""
     mapping = {
-        'free': 6,
-        'grayscale': 4,
-        'limited': 4,
+        '4-colors': 2,
+        '8-colors': 3,
+        '16-colors': 4,
+        'frees': 5,
+        'paid': 6,
+        '128-colors': 7,
+        '256-colors': 8,
     }
-    return mapping.get(palette, 6)
+    return mapping.get(palette, 4)
 
 
 def is_grayscale(palette: str) -> bool:
@@ -274,19 +279,21 @@ async def health_check():
     binary_exists = Path(PIXELART_BINARY).exists()
     binary_executable = os.access(PIXELART_BINARY, os.X_OK)
     
-    cuda_available = binary_exists and binary_executable
+    # Usar binary_exists y binary_executable en lugar de binary_ok
+    # O puedes hacer una verificación similar a check_binary_health()
+    binary_ok, message = check_binary_health()
     
-    status_msg = "healthy" if cuda_available else "degraded"
-    if not binary_exists:
-        status_msg = "binary_not_found"
-    elif not binary_executable:
-        status_msg = "binary_not_executable"
+    status_msg = "healthy" if binary_ok else "degraded"
+    
+    # Verificar CUDA
+    cuda_path = os.getenv('CUDA_HOME', '/usr/local/cuda')
+    cuda_available = Path(cuda_path).exists() and binary_ok
     
     return HealthResponse(
         status=status_msg,
         timestamp=datetime.utcnow().isoformat(),
         version="1.0.0",
-        cuda_available=binary_ok
+        cuda_available=cuda_available  # <-- CAMBIA binary_ok POR cuda_available
     )
 
 
